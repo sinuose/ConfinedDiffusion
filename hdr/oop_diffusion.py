@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')
 
+#  --------------------------------------------------------------------------------
+# CYLINDER
+#  --------------------------------------------------------------------------------
+
 class CylinderRandomWalk():
     def __init__ (self, 
                   N,
@@ -77,7 +81,34 @@ class CylinderRandomWalk():
         """
         for _ in range(self.steps):
             self.SingleStep()
+
+    def getMeanSquaredDisplacement(self):
+        """
+        Computes MSD_i for each particle j as:
+        MSD_i(j) = Sum_{n} [(x_{n+i,j} - x_{n,j})^2 + (y_{n+i,j} - y_{n,j})^2]
+        over all valid n, for i = 0..steps, returning a matrix of shape (steps+1, N).
+        """
+        # Convert list of arrays to NumPy array of shape (T, 3, N), where T = steps+1
+        traj_array = np.array(self.TRAJ)
+        T = traj_array.shape[0]          # Number of time points
+        N = traj_array.shape[2]          # Number of particles
         
+        msd_matrix = np.zeros((T, N))
+        
+        # For each time-lag i
+        for i in range(T):
+            # Differences in x for all n, shape: (T-i, N)
+            dx = traj_array[i:, 0, :] - traj_array[:T-i, 0, :]
+            # Differences in y for all n, shape: (T-i, N)
+            dy = traj_array[i:, 1, :] - traj_array[:T-i, 1, :]
+            # Differences in y for all n, shape: (T-i, N)
+            dz = traj_array[i:, 2, :] - traj_array[:T-i, 2, :]
+            
+            # Sum of squared differences for each particle (sum over n dimension)
+            msd_matrix[i, :] = np.sum(dx**2 + dy**2 + dz**2, axis=0)
+        
+        self.MSD = msd_matrix  # Shape: (steps+1, N)
+
     def plotTrajectory(self, fig,ax, particle_index=0):
         """
         Plot the 3D trajectory for a single particle.
@@ -94,6 +125,31 @@ class CylinderRandomWalk():
         # Plot the trajectory
         ax.plot(x_vals, y_vals, z_vals, label=f'Particle {particle_index}')
 
+    def plotMSD(self, fig, ax, particle_index=0):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, self.MSD[:, particle_index], alpha=0.3, label=f"Particle {particle_index}") 
+
+        ax.set_title("MSD for Individual Particles")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
+
+#  --------------------------------------------------------------------------------
+# CIRCLE
+#  --------------------------------------------------------------------------------
 
 class CircleRandomWalk():
     def __init__ (self, 
@@ -158,6 +214,31 @@ class CircleRandomWalk():
         for _ in range(self.steps):
             self.SingleStep()
         
+    def getMeanSquaredDisplacement(self):
+        """
+        Computes MSD_i for each particle j as:
+        MSD_i(j) = Sum_{n} [(x_{n+i,j} - x_{n,j})^2 + (y_{n+i,j} - y_{n,j})^2]
+        over all valid n, for i = 0..steps, returning a matrix of shape (steps+1, N).
+        """
+        # Convert list of arrays to NumPy array of shape (T, 3, N), where T = steps+1
+        traj_array = np.array(self.TRAJ)
+        T = traj_array.shape[0]          # Number of time points
+        N = traj_array.shape[2]          # Number of particles
+        
+        msd_matrix = np.zeros((T, N))
+        
+        # For each time-lag i
+        for i in range(T):
+            # Differences in x for all n, shape: (T-i, N)
+            dx = traj_array[i:, 0, :] - traj_array[:T-i, 0, :]
+            # Differences in y for all n, shape: (T-i, N)
+            dy = traj_array[i:, 1, :] - traj_array[:T-i, 1, :]
+            
+            # Sum of squared differences for each particle (sum over n dimension)
+            msd_matrix[i, :] = np.sum(dx**2 + dy**2, axis=0)
+        
+        self.MSD = msd_matrix  # Shape: (steps+1, N)
+    
     def plotTrajectory(self, fig, ax, particle_index=0):
         """
         Plot the 3D trajectory for a single particle.
@@ -173,6 +254,31 @@ class CircleRandomWalk():
         # Plot the trajectory
         ax.plot(x_vals, y_vals, label=f'Particle {particle_index}')
 
+    def plotMSD(self, fig, ax, particle_index=0):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, self.MSD[:, particle_index], alpha=0.3, label=f"Particle {particle_index}") 
+
+        ax.set_title("MSD for Individual Particles")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
+
+#  --------------------------------------------------------------------------------
+#  LINE
+#  --------------------------------------------------------------------------------
 
 class LineRandomWalk():
     def __init__ (self, 
@@ -224,7 +330,23 @@ class LineRandomWalk():
         """
         for _ in range(self.steps):
             self.SingleStep()
-        
+    
+    def getMeanSquaredDisplacement(self):
+        """
+        Computes MSD for each particle separately, returning a matrix of shape (steps+1, N).
+        """
+        # Convert list of arrays to one NumPy array of shape (steps+1, 3, N)
+        traj_array = np.array(self.TRAJ)  # Shape: (steps+1, 3, N)
+
+        # Reference initial positions for all particles
+        x0 = traj_array[0, 0, :]
+
+        # Compute squared displacement at each time step for each particle
+        msd_matrix = (traj_array[:, 0, :] - x0)**2
+
+        # Store as an attribute for later use
+        self.MSD = msd_matrix  # Shape: (steps+1, N)
+
     def plotTrajectory(self, fig,ax, particle_index=0):
         """
         Plot the 3D trajectory for a single particle.
@@ -238,6 +360,28 @@ class LineRandomWalk():
 
         # Plot the trajectory
         ax.plot(z_vals, label=f'Particle {particle_index}')
+
+    def plotMSD(self, fig, ax, particle_index=0):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, self.MSD[:, particle_index], alpha=0.3, label=f"Particle {particle_index}") 
+
+        ax.set_title("MSD for Individual Particles")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
 
 
 
