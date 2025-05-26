@@ -1,31 +1,67 @@
 import matplotlib.pyplot as plt
 from hdr.oop_diffusion import *
 from hdr.utils import *
+from hdr.analytical_solution import *
 
 
 
 if __name__ == "__main__":
-    # parameters for the simulation
-    N = 4
-    dt = 0.01
-    steps = 10000
-    D = 0.0001
-    R = 0.1
-    H = 0.5
+    # ------------------------------------------------------------------------------------
+    # CONSTANTS
+    # ------------------------------------------------------------------------------------
 
-    sim = CylinderRandomWalk(N, dt, steps, D, R, H)
-    #sim = CircleRandomWalk(N, dt, steps, D, R)
+
+    N = 10                                        # number of simultaneous simulations
+    dt = 0.01                                    # time step for spatial advancement
+    steps = 1000                                # total time steps, Time_arrya - 
+    D = 0.0001                                   # Diffusion Coefficient [\um/s^2]
+    R = 0.1                                      # Cylinder Radius       [\um ]
+    H = 0.5                                      # Cylinder Height       [\um ]
+
+    # ------------------------------------------------------------------------------------
+    # EXPERIMENTAL
+    # ------------------------------------------------------------------------------------
+
+
+    #sim = CylinderRandomWalk(N, dt, steps, D, R, H)
+    sim = CircleRandomWalk(N, dt, steps, D, R)
     #sim = LineRandomWalk(N, dt, steps, D, R)
-    sim.runSimulation()
-    sim.getMeanSquaredDisplacement()
-    print(np.shape(sim.MSD))
 
+    sim.runSimulation()                          # run the simulation
+    sim.getMeanSquaredDisplacement()             # get the MSD 
+
+    # ------------------------------------------------------------------------------------
+    # ANALYTICAL
+    # ------------------------------------------------------------------------------------
+    t_array = np.linspace(0, dt * steps, steps)
+
+    #ana = LineAnalyticalMSD(D, L, t_array)
+    ana = CircleAnalyticalMSD(D, R, t_array)
+    #ana = CylinderAnalyticalMSD(D, R, L, t_array)
+
+    # ------------------------------------------------------------------------------------
+    # ERROR ANALYSIS
+    # ------------------------------------------------------------------------------------
+    # ideally this should be comparing the experimental to the analytical
+
+    # ------------------------------------------------------------------------------------
+    # PREPARE FOR PLOTTING
+    # ------------------------------------------------------------------------------------
+    # self explanatory.
+
+
+    # ------------------------------------------------------------------------------------
+    # PLOTTING
+    # ------------------------------------------------------------------------------------
+    print(np.shape(np.mean(sim.MSD, axis=1)))
 
     fig = plt.figure(figsize=(12,18))
 
     # CYLINDER
     ax = fig.add_subplot(121, projection='3d')
     axMSD = fig.add_subplot(122)
+    #axMeanMSD = fig.add_subplot(133)
+
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -51,10 +87,14 @@ if __name__ == "__main__":
     # plotting
     for i in range(N):
         sim.plotTrajectory(fig, ax, particle_index=i)
-        sim.plotMSD(fig, axMSD, particle_index=i)
+        #sim.plotMSD(fig, axMSD, particle_index=i)
+
+    sim.plotMeanMSD(fig, axMSD)
+    axMSD.plot(t_array, ana, label=r'Analytical: $\langle \mathbf{r}^2(t) \rangle_c$')
 
     ax.legend()
     axMSD.legend()
+
 
     ax.grid()
     axMSD.grid()

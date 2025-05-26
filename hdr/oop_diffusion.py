@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -79,7 +80,7 @@ class CylinderRandomWalk():
         """
         Run the full simulation for 'steps' time steps.
         """
-        for _ in range(self.steps):
+        for _ in tqdm(range(self.steps)):
             self.SingleStep()
 
     def getMeanSquaredDisplacement(self):
@@ -140,6 +141,27 @@ class CylinderRandomWalk():
         ax.plot(time, self.MSD[:, particle_index], alpha=0.3, label=f"Particle {particle_index}") 
 
         ax.set_title("MSD for Individual Particles")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+    
+    def plotMeanMSD(self, fig, ax):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, np.mean(self.MSD, axis=1), alpha=0.3, label="Mean MSD") 
+
+        ax.set_title("Ensemble MSD")
 
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("MSD [m^2]")
@@ -275,6 +297,27 @@ class CircleRandomWalk():
         ax.legend()
         ax.grid()
 
+    def plotMeanMSD(self, fig, ax):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, np.mean(self.MSD, axis=1), alpha=0.3, label="Mean MSD") 
+
+        ax.set_title("Ensemble MSD")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
 
 #  --------------------------------------------------------------------------------
 #  LINE
@@ -376,6 +419,27 @@ class LineRandomWalk():
         ax.plot(time, self.MSD[:, particle_index], alpha=0.3, label=f"Particle {particle_index}") 
 
         ax.set_title("MSD for Individual Particles")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
+    def plotMeanMSD(self, fig, ax):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, np.mean(self.MSD, axis=1), alpha=0.3, label="Mean MSD") 
+
+        ax.set_title("Ensemble MSD")
 
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("MSD [m^2]")
