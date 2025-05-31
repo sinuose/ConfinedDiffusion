@@ -91,22 +91,17 @@ class CylinderRandomWalk():
         """
         # Convert list of arrays to NumPy array of shape (T, 3, N), where T = steps+1
         traj_array = np.array(self.TRAJ)
-        T = traj_array.shape[0]          # Number of time points
-        N = traj_array.shape[2]          # Number of particles
-        
+        T, _, N = traj_array.shape
+
         msd_matrix = np.zeros((T, N))
-        
-        # For each time-lag i
-        for i in range(T):
-            # Differences in x for all n, shape: (T-i, N)
-            dx = traj_array[i:, 0, :] - traj_array[:T-i, 0, :]
-            # Differences in y for all n, shape: (T-i, N)
-            dy = traj_array[i:, 1, :] - traj_array[:T-i, 1, :]
-            # Differences in y for all n, shape: (T-i, N)
-            dz = traj_array[i:, 2, :] - traj_array[:T-i, 2, :]
-            
-            # Sum of squared differences for each particle (sum over n dimension)
-            msd_matrix[i, :] = np.sum(dx**2 + dy**2 + dz**2, axis=0)
+
+        # Loop over lag time i (from 0 to T-1)
+        for n in range(T):
+            displacements = traj_array[n:, :3, :] - traj_array[:T - n, :3, :]
+            # displacements shape: (T-i, 2, N)
+            squared_disp = np.sum(displacements**2, axis=1)  # shape: (T-n, N)
+
+            msd_matrix[n] = np.mean(squared_disp, axis=0)   # 1/(T-n) averaging
         
         self.MSD = msd_matrix  # Shape: (steps+1, N)
 
@@ -119,9 +114,9 @@ class CylinderRandomWalk():
         traj_array = np.array(self.TRAJ)
 
         # Extract x, y, z for the chosen particle
-        x_vals = traj_array[:, 0, particle_index]
-        y_vals = traj_array[:, 1, particle_index]
-        z_vals = traj_array[:, 2, particle_index]
+        x_vals = traj_array[:100, 0, particle_index]
+        y_vals = traj_array[:100, 1, particle_index]
+        z_vals = traj_array[:100, 2, particle_index]
 
         # Plot the trajectory
         ax.plot(x_vals, y_vals, z_vals, label=f'Particle {particle_index}')
@@ -233,7 +228,7 @@ class CircleRandomWalk():
         """
         Run the full simulation for 'steps' time steps.
         """
-        for _ in range(self.steps):
+        for _ in tqdm(range(self.steps)):
             self.SingleStep()
         
     def getMeanSquaredDisplacement(self):
@@ -244,20 +239,17 @@ class CircleRandomWalk():
         """
         # Convert list of arrays to NumPy array of shape (T, 3, N), where T = steps+1
         traj_array = np.array(self.TRAJ)
-        T = traj_array.shape[0]          # Number of time points
-        N = traj_array.shape[2]          # Number of particles
-        
+        T, _, N = traj_array.shape
+
         msd_matrix = np.zeros((T, N))
-        
-        # For each time-lag i
-        for i in range(T):
-            # Differences in x for all n, shape: (T-i, N)
-            dx = traj_array[i:, 0, :] - traj_array[:T-i, 0, :]
-            # Differences in y for all n, shape: (T-i, N)
-            dy = traj_array[i:, 1, :] - traj_array[:T-i, 1, :]
-            
-            # Sum of squared differences for each particle (sum over n dimension)
-            msd_matrix[i, :] = np.sum(dx**2 + dy**2, axis=0)
+
+        # Loop over lag time i (from 0 to T-1)
+        for n in range(T):
+            displacements = traj_array[n:, :2, :] - traj_array[:T - n, :2, :]
+            # displacements shape: (T-i, 2, N)
+            squared_disp = np.sum(displacements**2, axis=1)  # shape: (T-n, N)
+
+            msd_matrix[n] = np.mean(squared_disp, axis=0)   # 1/(T-n) averaging
         
         self.MSD = msd_matrix  # Shape: (steps+1, N)
     
@@ -371,7 +363,7 @@ class LineRandomWalk():
         """
         Run the full simulation for 'steps' time steps.
         """
-        for _ in range(self.steps):
+        for _ in tqdm(range(self.steps)):
             self.SingleStep()
     
     def getMeanSquaredDisplacement(self):
