@@ -2,7 +2,14 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib
+from scipy.linalg import inv
 matplotlib.use('Qt5Agg')
+
+from scipy.optimize import curve_fit
+#  --------------------------------------------------------------------------------
+# MAIN CLASS
+#  --------------------------------------------------------------------------------
+
 
 #  --------------------------------------------------------------------------------
 # CYLINDER
@@ -105,6 +112,40 @@ class CylinderRandomWalk():
         
         self.MSD = msd_matrix  # Shape: (steps+1, N)
 
+
+    def getMeanSquaredDisplacementDecoupled(self):
+        """
+        Computes MSD_i for each particle j as:
+        MSD_i(j) = Sum_{n} [(x_{n+i,j} - x_{n,j})^2 + (y_{n+i,j} - y_{n,j})^2]
+        over all valid n, for i = 0..steps, returning a matrix of shape (steps+1, N).
+
+        This decouples the system into xy and z components which is intended to use to test the model
+        """
+        # Convert list of arrays to NumPy array of shape (T, 3, N), where T = steps+1
+        traj_array = np.array(self.TRAJ)
+        T, _, N = traj_array.shape
+
+        msd_xy = np.zeros((T, N))
+        msd_z = np.zeros((T, N))
+        msd_total = np.zeros((T, N))
+
+        # Loop over lag time i (from 0 to T-1)
+        for n in range(T):
+            displacements = traj_array[n:, :, :] - traj_array[:T - n, :, :]  # (T-n, 3, N)
+            
+            squared_disp_xy = displacements[:, 0, :]**2 + displacements[:, 1, :]**2
+            squared_disp_z = displacements[:, 2, :]**2
+            squared_disp_total = squared_disp_xy + squared_disp_z
+
+            msd_xy[n] = np.mean(squared_disp_xy, axis=0)
+            msd_z[n] = np.mean(squared_disp_z, axis=0)
+            msd_total[n] = np.mean(squared_disp_total, axis=0)
+        
+        # Store results
+        self.MSD_xy = msd_xy  # shape (T, N)
+        self.MSD_z = msd_z
+        self.MSD = msd_total  # Shape: (steps+1, N)
+
     def plotTrajectory(self, fig,ax, particle_index=0):
         """
         Plot the 3D trajectory for a single particle.
@@ -163,6 +204,103 @@ class CylinderRandomWalk():
         ax.legend()
         ax.grid()
 
+    def plotMeanMSDDecoupled(self, fig, ax):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, np.mean(self.MSD, axis=1), alpha=0.3, label="Mean MSD") 
+        ax.plot(time, np.mean(self.MSD_xy, axis=1), alpha=0.3, label="Mean MSD xy")
+        ax.plot(time, np.mean(self.MSD_z, axis=1), alpha=0.3, label="Mean MSD z")  
+
+        # plot a red adjustment using the exact formula:
+        ax.plot(time, (1 + self.H**2 / (6 * self.R**2)) * np.mean(self.MSD_xy, axis=1), "r--", alpha=0.3, label="Adjusted XY")
+
+        ax.set_title("Ensemble MSD")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
+    def plotMeanMSDComparison(self, fig, ax):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+        # Generate time array
+        time = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot MSD for each individual particle
+        ax.plot(time, np.mean(np.abs(self.MSD - self.MSD_xy), axis=1), alpha=0.3, label="$|<x_{cyl}> - <x_{circ}>|$") 
+        ax.plot(time, np.ones(len(time)) * self.H**2 / 6, "r--", alpha=0.3, label="Axial MSD Limit")  
+
+        ax.set_title("Comparison")
+
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("MSD [m^2]")
+        ax.legend()
+        ax.grid()
+
+    def extractDiffusionFromMSD(self, model, fig, ax):
+        """
+        Plot the Mean Squared Displacement over time.
+        Plot MSD curves for individual particles.
+        """
+        if not hasattr(self, 'MSD'):
+            raise ValueError("MSD has not been computed. Run getMeanSquaredDisplacement() first.")
+
+
+        # Generate time array
+        t_array = np.linspace(0, self.dt * self.steps, self.MSD.shape[0])
+
+        # Plot mean MSD
+        mean_msd = np.mean(self.MSD, axis=1)
+        # extract diffusion for mean MSD first
+
+    def compute_covariance_matrix(self, T):
+        """Returns covariance matrix R for Brownian motion (1D, no noise)."""
+        R = np.fromfunction(lambda i, j: np.minimum(i + 1, j + 1), (T, T), dtype=int)
+        return R
+
+    def getDiffusionMLE(self):
+        """
+        Computes the MLE diffusion coefficient for a 3D trajectory array.
+        
+        Parameters:
+        - traj_array: np.ndarray of shape (T, 3, N)
+        - dt: float, time step between trajectory points
+        
+        Returns:
+        - D_mle: np.ndarray of shape (N,), estimated diffusion coefficients
+        """
+        traj_array = np.array(self.TRAJ)
+
+        T, d, N = traj_array.shape
+        R = self.compute_covariance_matrix(T)
+        R_inv = inv(R)
+        
+        D_mle = np.zeros(N)
+
+        for n in range(N):
+            sum_proj = 0.0
+            for dim in range(d):
+                x = traj_array[:, dim, n]
+                sum_proj += x @ R_inv @ x  # x^T R^{-1} x
+            D_mle[n] = sum_proj / (2 * d * (T - 1) * self.dt)
+
+        self.D_MLE = D_mle
+        
 
 #  --------------------------------------------------------------------------------
 # CIRCLE
@@ -230,7 +368,7 @@ class CircleRandomWalk():
         """
         for _ in tqdm(range(self.steps)):
             self.SingleStep()
-        
+    
     def getMeanSquaredDisplacement(self):
         """
         Computes MSD_i for each particle j as:
