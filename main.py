@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+
 from scipy.constants import Boltzmann as kb
 from hdr.oop_diffusion import *
 from hdr.utils import *
@@ -612,7 +613,7 @@ if __name__ == "__main__":
     #Figure1()
     
     # COMPARING THE CIRCULAR MSD TO THE CYLINDERICAL MSD
-    #Figure2()
+    #igure2()
 
     # EXTRACTING DIFFUSION FROM MSD AND COMPARING HOW CIRCULAR/LINEAR/CYLYNDERICAL GET THE NUMBERS
     #Figure3()
@@ -620,7 +621,7 @@ if __name__ == "__main__":
     #Figure4()
 
     # DIFFUSION BEST ESTIMATOR
-    Figure5()
+    #Figure5()
 
 
     # -----
